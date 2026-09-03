@@ -1,0 +1,14 @@
+{
+  "source": {
+    "include": [
+      "controladores/usuarios.js",
+      "db",
+      "config.js",
+      "index.js"
+    ],
+    "exclude": ["node_modules"]
+  },
+  "opts": {
+    "destination": "./docs"
+  }
+}
