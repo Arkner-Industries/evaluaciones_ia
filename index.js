@@ -5,11 +5,7 @@ router.get("/",(req,res)=>{
     res.send("ok")
 })
 
-router.post("/registro",(req,res)=>{
-    
-})
-
-router.post("/usuarios", async (req, res) => {
+router.post("/registro", async (req, res) => {
     try {
         const { usuario, contrasena, email, rol } = req.body;
         if (!usuario || !contrasena || !email || !rol) {
