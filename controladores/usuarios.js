@@ -1,11 +1,6 @@
-// usuarios.js
 import pool from '../db.js' // Ajusta la ruta a tu archivo de configuración de BD
 
-/**
- * Crear un usuario
- * @param {Object} datos - { nombre, apellido, usuario, contrasena, tipo }
- * @returns {Promise<Object>} - Resultado de la inserción
- */
+// Función para crear un usuario
 const crear_usuario = async (datos) => {
     const { usuario, contrasena, email, rol } = datos;
     const connection = await pool.getConnection();
@@ -15,36 +10,27 @@ const crear_usuario = async (datos) => {
              VALUES (?, ?, ?, ?)`,
             [usuario, contrasena, email, rol]
         );
-        return result; // contiene insertId, affectedRows, etc.
+        return result;
     } finally {
-        connection.release();
+        connection.release();// libera la conexión de vuelta al pool
     }
 };
 
-/**
- * Borrar un usuario por ID
- * @param {number} id - ID del usuario
- * @returns {Promise<Object>} - Resultado de la eliminación
- */
+// Crea la función borrar_usuario que recibe un id y elimina el usuario correspondiente
 const borrar_usuario = async (id) => {
     const connection = await pool.getConnection();
     try {
         const [result] = await connection.query(
-            'DELETE FROM Usuario WHERE id = ?',
+            'DELETE FROM usuario WHERE id = ?',
             [id]
         );
         return result; // contiene affectedRows
     } finally {
-        connection.release();
+        connection.release(); 
     }
 };
 
-/**
- * Actualizar un usuario por ID
- * @param {number} id - ID del usuario
- * @param {Object} datos - Campos a actualizar (ej: { nombre, apellido, usuario, contrasena, tipo })
- * @returns {Promise<Object>} - Resultado de la actualización
- */
+// Crea la función actualizar_usuario que recibe un id y un objeto con los datos a actualizar
 const actualizar_usuario = async (id, datos) => {
     const connection = await pool.getConnection();
     try {
@@ -54,7 +40,7 @@ const actualizar_usuario = async (id, datos) => {
         const values = keys.map(key => datos[key]);
         values.push(id); // para el WHERE
 
-        const query = `UPDATE Usuario SET ${setClause} WHERE id = ?`;
+        const query = `UPDATE usuario SET ${setClause} WHERE id = ?`;
         const [result] = await connection.query(query, values);
         return result; // contiene affectedRows
     } finally {
