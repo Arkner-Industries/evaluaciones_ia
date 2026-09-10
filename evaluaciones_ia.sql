@@ -76,7 +76,7 @@ create table respuestas (
     id_pregunta int,
     respuesta text,
     correccion_ia text,
-    nota decimal (5,2),
+    nota decimal (3,1),
     foreign key (id_evaluacion_alumno) references evaluacion_alumno(id),
     foreign key (id_pregunta) references preguntas(id)
 );

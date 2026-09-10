@@ -1,6 +1,6 @@
 import { router } from "./config.js"
 import { crear_usuario, actualizar_usuario, borrar_usuario } from "./controladores/usuarios.js"
-// estoy cansado jefe 
+// estoy cansado jefe, y recuerden hijos de su fruta madre usar minusculas siempre que no sea necesario
 
 router.get("/",(req,res)=>{
     res.send("ok")
@@ -9,7 +9,8 @@ router.get("/",(req,res)=>{
 // Crear usuario (post)
 router.post("/usuarios", async (req, res) => { // async porque vamos a usar await dentro de la función
     try {
-        const { usuario, contrasena, email, rol } = req.body;
+
+        const { usuario, contrasena, email, rol, nombre, apellido, materia } = req.body;
         if (!usuario || !contrasena || !email || !rol) {
             return res.status(400).json({ error: "Faltan campos obligatorios" });
         }
@@ -17,8 +18,9 @@ router.post("/usuarios", async (req, res) => { // async porque vamos a usar awai
         if (!['alumno', 'profesor'].includes(rol)) {
             return res.status(400).json({ error: "Rol inválido" });
         }
-        const resultado = await crear_usuario({ usuario, contrasena, email, rol }); // await porque crear_usuario es una función asíncrona que devuelve una promesa
+        const resultado = await crear_usuario({ usuario, contrasena, email, rol, nombre, apellido, materia }); // await porque crear_usuario es una función asíncrona que devuelve una promesa
         res.status(201).json({ mensaje: "Usuario creado", id: resultado.insertId });
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Error al crear usuario" });
