@@ -1,11 +1,11 @@
-import pool from "../backend/db.js";
+import pool from "../db.js";
 import bcrypt from "bcrypt";
 
 // Función para crear un profesor
 const crear_profesor = async (req, res) => {
-    const { usuario, contrasena, email, nombre, apellido } = req.body;
+    const { nombre_usuario, contrasena, email, nombre, apellido } = req.body;
 
-    if (!usuario || !contrasena || !email || !nombre || !apellido) {
+    if (!nombre_usuario || !contrasena || !email || !nombre || !apellido) {
         return res.status(400).json({
             mensaje: "Faltan campos obligatorios"
         })
@@ -25,12 +25,12 @@ const crear_profesor = async (req, res) => {
             });
         }
         
-        const hash = await bcrypt.hash (contrsena, 10);
+        const hash = await bcrypt.hash (contrasena, 10);
 
         await conexion.beginTransaction();
 
         const [resultado_usuario] = await conexion.execute(
-            `ISERT INTO usuario (nombre_usuario, contrasena, email, rol) 
+            `INSERT INTO usuario (nombre_usuario, contrasena, email, rol) 
             VALUES(?,?,?, 'profesor')`,
             [nombre_usuario, hash, email]
         );
