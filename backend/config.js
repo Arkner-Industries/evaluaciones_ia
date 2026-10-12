@@ -1,12 +1,16 @@
 // configuraciones del servidor
 import express from 'express';
 import mysql from 'mysql2/promise';
-import { config } from 'dotenv';
+import cors from 'cors';
+import dotenv from 'dotenv';
 import ruta_profesor from './rutas/ruta_profesor.js';
 
-config();
+dotenv.config();
 const servidor = express();
 
+servidor.use(cors({
+    origin: 'http://localhost:5173'
+}))
 
 const pool = await mysql.createConnection({
     host: process.env.DB_HOST,
