@@ -12,6 +12,7 @@ const crear_profesor = async (req, res) => {
     }
 
     const conexion = await pool.getConnection();
+    let transaccion_iniciada = false;
 
     try {
         const [usuario_existente] = await conexion.execute(
@@ -28,6 +29,7 @@ const crear_profesor = async (req, res) => {
         const hash = await bcrypt.hash (contrasena, 10);
 
         await conexion.beginTransaction();
+        transaccion_iniciada = true;
 
         const [resultado_usuario] = await conexion.execute(
             `INSERT INTO usuario (nombre_usuario, contrasena, email, rol) 
@@ -35,15 +37,26 @@ const crear_profesor = async (req, res) => {
             [nombre_usuario, hash, email]
         );
 
+        const id_usuario = resultado_usuario.insertId;
+
+        await conexion.execute(
+            'INSERT INTO profesor (nombre, apellido, id_usuario) VALUES (?,?,?)',
+            [nombre, apellido, id_usuario]
+        );
+
         await conexion.commit();
+        transaccion_iniciada = false;
 
         return res.status(201).json({
-            mensaje: 'Profesor creado correctamente'
+            mensaje: 'Profesor creado correctamente',
+            id_usuario: id_usuario
         });
 
     } catch (error) {
-        await conexion.rollback();
-
+        if (transaccion_iniciada) {
+            await conexion.rollback();
+        }
+        
         console.error("Error al crear profesor",error);
 
         return res.status(500).json({
