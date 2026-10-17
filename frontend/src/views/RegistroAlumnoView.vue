@@ -1,62 +1,62 @@
 <script setup>
-import {ref} from 'vue'
+import { ref } from "vue";
 
 const formulario = ref ({
     nombre_usuario: '',
     contrasena: '',
     email: '',
     nombre: '',
-    apellido: ''
-})
+    apellido:''
+});
 
-const cargando = ref(false)
-const mensaje = ref('')
-const error = ref('')
+const cargando = ref(false);
+const mensaje = ref('');
+const error = ref('');
 
-const registrar = async () => {
+const registrar = async()=>{
     mensaje.value = ''
     error.value = ''
     cargando.value = true
 
-try {
-    const respuesta = await fetch(
-        'http://localhost:4000/profesor/registro', 
-        { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify(formulario.value) 
-        }
-    )
-
-    const texto = await respuesta.text()
-    let datos = {}
-
     try {
-        datos = texto ? JSON.parse(texto) : {}
-    } catch {
-        throw new Error(
-            `Servidor no responde`
+        const respuesta = await fetch(
+            'http://localhost:4000/alumno/registro',
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formulario.value)
+            }
         )
-    }
 
-    if (!respuesta.ok) { 
-        throw new Error(
-            datos.mensaje || 'No se pudo registrar la cuenta'
-        )  
-    }
+        const texto = await respuesta.text()
+        let datos = {}
+        
+        try {
+            datos = texto ? JSON.parse(texto) : {}
+        } catch {
+            throw new Error(
+                `Servidor no responde`
+            )
+        }
 
-    mensaje.value = datos.mensaje || 'Registro completado'
+        if (!respuesta.ok) {
+            throw new Error(
+                datos.mensaje || `No se pudo registrar la cuenta`
+            )
+        }
 
-    formulario.value = {
-        nombre_usuario: '',
-        contrasena: '',
-        email: '',
-        nombre: '',
-        apellido: ''
-    }
+        mensaje.value = datos.mensaje || `Registro completado`
 
-    } catch (err) {
-        error.value = err.message || 'Error al conectar con el servidor'
+        formulario.value = {
+            nombre_usuario: '',
+            contrasena: '',
+            email: '',
+            nombre: '',
+            apellido: ''
+        }
+
+    }catch (error) {
+        error.value = error.mensaje || `Error al conectar con el servidor`
     } finally {
         cargando.value = false
     }
@@ -65,7 +65,7 @@ try {
 
 <template>
     <main>
-        <h1>Registro de profesor</h1>
+        <h1>Registro de alumno</h1>
 
         <form @submit.prevent="registrar">
             <label for="nombre_usuario">Nombre de usuario</label>
@@ -81,7 +81,7 @@ try {
             <input
             id = "contrasena"
             v-model = "formulario.contrasena"
-            type = "password"
+            typer = "password"
             autocomplete = "new-password"
             required
             />
@@ -113,17 +113,22 @@ try {
             required
             />
 
-            <button type="sumit" :disabled="cargando">
-                {{  cargando ? 'Registrando...' : 'Crear cuenta'  }}
+            <button type="submit" :disabled="cargando">
+                {{ cargando ? 'Registrando...' : 'Crear Cuenta' }}
             </button>
 
             <p v-if="mensaje" role="alert">
                 {{ mensaje }}
             </p>
 
-            <p v-if="error" role="alert">
+            <p v-if="mensaje" role="alert">
                 {{ error }}
             </p>
         </form>
+
+        <p>
+            ¿Ya tienes cuenta? <RouterLink to="/login">Iniciar sesion</RouterLink>
+            <RouterLink to="/registro-profesor">Soy profesor</RouterLink>
+        </p>
     </main>
 </template>

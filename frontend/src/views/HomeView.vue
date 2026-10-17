@@ -12,8 +12,11 @@ function salir() {
 </script>
 
 <template>
+
+  <p>jajajasdaweaseaweasd</p>
   <div>
     <p>Hola {{ auth.usuario?.nombre_usuario }} ({{ auth.usuario?.rol }})</p>
+
     <button @click="salir">Cerrar sesión</button>
   </div>
 </template>
