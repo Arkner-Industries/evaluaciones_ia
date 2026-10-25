@@ -34,21 +34,34 @@ create table profesor_alumno (
     foreign key (id_profesor) references profesor(id),
     foreign key (id_alumno) references alumno(id)
 );
--- tabla 5
+-- tabla 5a
 create table grupo (
 	id int primary key auto_increment,
-    nombre_grupo varchar(100),
+    nombre_grupo varchar(100) not null,
+    codigo varchar(12) not null unique,
+    id_profesor int not null,
+    fecha_creacion timestamp default current_timestamp,
+    foreign key (id_profesor) references profesor(id)
+);
+-- tabla 5b
+create table grupo_alumno (
+    id_grupo int,
     id_alumno int,
-    foreign key (id_alumno) references alumno(id)
+    fecha_ingreso timestamp default current_timestamp,
+    primary key (id_grupo, id_alumno),
+    foreign key (id_grupo) references grupo(id) on delete cascade,
+    foreign key (id_alumno) references alumno(id) on delete cascade
 );
 -- tabla 6
 create table evaluacion (
 	id int primary key auto_increment,
     id_profesor int,
+    id_grupo int,
     titulo varchar(250),
     descripcion text,
     fecha date,
-    foreign key (id_profesor) references profesor(id)
+    foreign key (id_profesor) references profesor(id),
+    foreign key (id_grupo) references grupo(id)
 );
 -- 7
 create table evaluacion_alumno (
@@ -57,6 +70,7 @@ create table evaluacion_alumno (
     id_alumno int,
     fecha date,
     nota decimal (5,2),
+    unique (id_evaluacion, id_alumno),
     foreign key (id_evaluacion) references evaluacion(id),
     foreign key (id_alumno) references alumno(id)
 );

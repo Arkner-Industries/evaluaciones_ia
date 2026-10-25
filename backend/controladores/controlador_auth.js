@@ -26,7 +26,7 @@ const login = async (req, res) => {
         const coincide = await bcrypt.compare(contrasena, usuario.contrasena);
 
         if (!coincide) {
-            return res.status(401).json({ mensaje: "Credencial incorrecta" })
+            return res.status(401).json({ mensaje: "Credencial incorrecta1" })
         }
 
         const token = jwt.sign(

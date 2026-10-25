@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 const auth = useAuthStore()
 const router = useRouter()
 
-function salir() {
+const salir = () => {
   auth.logout()
   router.push('/login')
 }

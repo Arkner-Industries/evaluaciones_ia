@@ -10,8 +10,9 @@ dotenv.config();
 const servidor = express();
 
 servidor.use(cors({
-    origin: 'http://localhost:5173'
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5173'
 }));
+
 
 const pool = await mysql.createConnection({
     host: process.env.DB_HOST,
@@ -27,10 +28,7 @@ servidor.use("/profesor", ruta_profesor);
 servidor.use("/alumno", ruta_alumno);
 servidor.use("/auth", ruta_auth);
 
-const puerto = process.env.PORT || 4000;
-servidor.listen(puerto, () => {
-    console.log(`Servidor escuchando en el puerto ${puerto}`);
-});
+
 
 export {
     servidor
