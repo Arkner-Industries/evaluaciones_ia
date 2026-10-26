@@ -13,12 +13,15 @@ const es_fecha = (valor) => {
     return !Number.isNaN(fecha.getTime()) && fecha.toISOString().slice(0, 10) === valor;
 };
 
+
 const estado_de = (id_entrega, nota) => {
     if (id_entrega === null) return "pendiente";
     return nota === null ? "entregada" : "corregida";
 };
 
+
 const a_numero = (valor) => (valor === null || valor === undefined ? null : Number(valor));
+
 
 const crear_evaluacion = async (req, res) => {
     const { titulo, descripcion, fecha, id_grupo, preguntas } = req.body || {};
@@ -130,9 +133,9 @@ const listar_evaluacion_profesor = async (req, res) => {
 
         return res.status(200).json(
             filas.map((fila) => ({
-                ...filas,
-                preguntas: Number(filas.preguntas),
-                entregas: Number(filas.entregas)
+                ...fila,
+                preguntas: Number(fila.preguntas),
+                entregas: Number(fila.entregas)
             }))
         );
 
@@ -245,11 +248,349 @@ const listar_resultado_alumno = async (req, res) => {
 
         return res.status(500).json({ mensaje: "Error interno al listar el resultado" });
     }
-}
+};
+
+
+const obtener_evaluacion_alumno = async (req, res) => {
+    const id_evaluacion = Number(req.params.id);
+
+    if (!Number.isInteger(id_evaluacion) || id_evaluacion <= 0) {
+        return res.status(400).json({ mensaje: "Evaluación inválida" });
+    }
+
+    try {
+        const id_alumno = await id_alumno_de(req.usuario.id);
+        if (!id_alumno) {
+            return res.status(403).json({ mensaje: "Tu usuario no tiene un perfil de alumno" });
+        }
+
+        const [evaluaciones] = await pool.execute(
+            `SELECT e.id, e.titulo, e.descripcion,
+                DATE_FORMAT(e.fecha, '%Y-%m-%d') AS fecha,
+                g.nombre_grupo AS grupo,
+                ea.id AS id_entrega
+            FROM evaluacion e
+            JOIN grupo g ON g.id = e.id_grupo
+            JOIN grupo_alumno ga ON ga.id_grupo = g.id AND ga.id_alumno = ?
+            LEFT JOIN evaluacion_alumno ea ON ea.id_evaluacion = e.id AND ea.id_alumno = ga.id_alumno
+            WHERE e.id = ?`,
+            [id_alumno, id_evaluacion]
+        );
+
+        if (evaluaciones.length === 0) {
+            return res.status(404).json({ mensaje: "La evaluacion no existe o no es de tus grupos" });
+        }
+        if (evaluaciones[0].id_entrega !== null) {
+            return res.status(409).json({ mensaje: "Ya entregaste esta evaluacion" });
+        }
+
+        const [preguntas] = await pool.execute(
+            "SELECT id, pregunta FROM preguntas WHERE id_evaluacion = ? ORDER BY id",
+            [id_evaluacion]
+        );
+
+        const { id_entrega, ...evaluacion } = evaluaciones[0];
+        return res.status(200).json({ ...evaluacion, preguntas });
+
+    } catch (error) {
+        console.error("Error al obtener la evaluacion del alumno", error);
+        return res.status(500).json({ mensaje: "Error interno al obtener la evaluacion" });
+    }
+};
+
+
+const entregar_evaluacion = async (req, res) => {
+    const id_evaluacion = Number(req.params.id);
+    const { respuestas } = req.body || {};
+
+    if (!Number.isInteger(id_evaluacion) || id_evaluacion <= 0) {
+        return res.status(400).json({ mensaje: "Evaluación invalida" });
+    }
+    if (
+        !Array.isArray(respuestas) || respuestas.length === 0 ||
+        !respuestas.every((r) => Number.isInteger(Number(r?.id_pregunta)) && typeof r?.respuesta === "string")
+    ) {
+        return res.status(400).json({ mensaje: "Las respuestas no tienen el formato correcto" });
+    }
+
+    const conexion = await pool.getConnection();
+    let transaccion_iniciada = false;
+
+    try {
+        const id_alumno = await id_alumno_de(req.usuario.id);
+        if (!id_alumno) {
+            return res.status(403).json({ mensaje: "Tu usuario no tiene un perfil de alumno" });
+        }
+
+        const [evaluaciones] = await conexion.execute(
+            `SELECT e.id
+            FROM evaluacion e
+            JOIN grupo_alumno ga ON ga.id_grupo = e.id_grupo
+            WHERE e.id = ? AND ga.id_alumno = ?`,
+            [id_evaluacion, id_alumno]
+        );
+        if (evaluaciones.length === 0) {
+            return res.status(404).json({ mensaje: "La evaluación no existe o no es de tus grupos" });
+        }
+
+        const [preguntas] = await conexion.execute(
+            "SELECT id FROM preguntas WHERE id_evaluacion = ?",
+            [id_evaluacion]
+        );
+        const ids_validos = preguntas.map((p) => p.id);
+        const ids_enviados = respuestas.map((r) => Number(r.id_pregunta));
+        const completas =
+            ids_validos.length === ids_enviados.length &&
+            ids_validos.every((id) => ids_enviados.includes(id));
+
+        if (!completas) {
+            return res.status(400).json({ mensaje: "Tenés que responder todas las preguntas de la evaluacion" });
+        }
+
+        await conexion.beginTransaction();
+        transaccion_iniciada = true;
+
+        const [entrega] = await conexion.execute(
+            "INSERT INTO evaluacion_alumno (id_evaluacion, id_alumno, fecha) VALUES (?,?,CURDATE())",
+            [id_evaluacion, id_alumno]
+        );
+
+        for (const r of respuestas) {
+            await conexion.execute(
+                "INSERT INTO respuestas (id_evaluacion_alumno, id_pregunta, respuesta) VALUES (?,?,?)",
+                [entrega.insertId, Number(r.id_pregunta), r.respuesta.trim()]
+            );
+        }
+
+        await conexion.commit();
+        transaccion_iniciada = false;
+
+        return res.status(201).json({ mensaje: "Evaluación entregada", id: entrega.insertId });
+
+    } catch (error) {
+        if (transaccion_iniciada) {
+            await conexion.rollback();
+        }
+
+        if (error.code === "ER_DUP_ENTRY") {
+            return res.status(409).json({ mensaje: "Ya entregaste esta evaluacion" });
+        }
+
+        console.error("Error al entregar la evaluacion", error);
+        return res.status(500).json({ mensaje: "Error interno al entregar la evaluacion" });
+
+    } finally {
+        conexion.release();
+    }
+};
+
+
+const listar_entregas_profesor = async (req, res) => {
+    const id_evaluacion = Number(req.params.id);
+
+    if (!Number.isInteger(id_evaluacion) || id_evaluacion <= 0) {
+        return res.status(400).json({ mensaje: "Evaluación invalida" });
+    }
+
+    try {
+        const id_profesor = await id_profesor_de(req.usuario.id);
+        if (!id_profesor) {
+            return res.status(403).json({ mensaje: "Tu usuario no tiene un perfil de profesor" });
+        }
+
+        // La evaluación tiene que ser del profesor
+        const [evaluaciones] = await pool.execute(
+            "SELECT id, titulo FROM evaluacion WHERE id = ? AND id_profesor = ?",
+            [id_evaluacion, id_profesor]
+        );
+        if (evaluaciones.length === 0) {
+            return res.status(404).json({ mensaje: "La evaluacion no existe o no es tuya" });
+        }
+
+        const [filas] = await pool.execute(
+            `SELECT ea.id, CONCAT(a.nombre, ' ', a.apellido) AS alumno,
+                DATE_FORMAT(ea.fecha, '%Y-%m-%d') AS fecha, ea.nota
+            FROM evaluacion_alumno ea
+            JOIN alumno a ON a.id = ea.id_alumno
+            WHERE ea.id_evaluacion = ?
+            ORDER BY ea.id DESC`,
+            [id_evaluacion]
+        );
+
+        return res.status(200).json({
+            id: evaluaciones[0].id,
+            titulo: evaluaciones[0].titulo,
+            entregas: filas.map((fila) => {
+                const nota = a_numero(fila.nota);
+                return {
+                    id: fila.id,
+                    alumno: fila.alumno,
+                    fecha: fila.fecha,
+                    estado: estado_de(fila.id, nota),
+                    nota
+                };
+            })
+        });
+
+    } catch (error) {
+        console.error("Error al listar las entregas", error);
+        return res.status(500).json({ mensaje: "Error interno al listar las entregas" });
+    }
+};
+
+
+const obtener_entrega_profesor = async (req, res) => {
+    const id_entrega = Number(req.params.id);
+
+    if (!Number.isInteger(id_entrega) || id_entrega <= 0) {
+        return res.status(400).json({ mensaje: "Entrega invalida" });
+    }
+
+    try {
+        const id_profesor = await id_profesor_de(req.usuario.id);
+        if (!id_profesor) {
+            return res.status(403).json({ mensaje: "Tu usuario no tiene un perfil de profesor" });
+        }
+
+        const [entregas] = await pool.execute(
+            `SELECT ea.id, ea.nota, DATE_FORMAT(ea.fecha, '%Y-%m-%d') AS fecha,
+                e.id AS id_evaluacion, e.titulo,
+                CONCAT(a.nombre, ' ', a.apellido) AS alumno
+            FROM evaluacion_alumno ea
+            JOIN evaluacion e ON e.id = ea.id_evaluacion
+            JOIN alumno a ON a.id = ea.id_alumno
+            WHERE ea.id = ? AND e.id_profesor = ?`,
+            [id_entrega, id_profesor]
+        );
+        if (entregas.length === 0) {
+            return res.status(404).json({ mensaje: "La entrega no existe o no es de tus evaluaciones" });
+        }
+
+        const [respuestas] = await pool.execute(
+            `SELECT r.id, p.pregunta, p.respuesta_correcta, r.respuesta,
+                r.correccion_ia AS comentario, r.nota
+            FROM respuestas r
+            JOIN preguntas p ON p.id = r.id_pregunta
+            WHERE r.id_evaluacion_alumno = ?
+            ORDER BY r.id`,
+            [id_entrega]
+        );
+
+        return res.status(200).json({
+            ...entregas[0],
+            nota: a_numero(entregas[0].nota),
+            respuestas: respuestas.map((r) => ({ ...r, nota: a_numero(r.nota) }))
+        });
+
+    } catch (error) {
+        console.error("Error al obtener la entrega", error);
+        return res.status(500).json({ mensaje: "Error interno al obtener la entrega" });
+    }
+};
+
+
+const corregir_entrega = async (req, res) => {
+    const id_entrega = Number(req.params.id);
+    const { correcciones } = req.body || {};
+
+    if (!Number.isInteger(id_entrega) || id_entrega <= 0) {
+        return res.status(400).json({ mensaje: "Entrega inválida" });
+    }
+
+    const nota_valida = (nota) =>
+        nota !== "" && nota !== null && nota !== undefined &&
+        Number.isFinite(Number(nota)) && Number(nota) >= 0 && Number(nota) <= 10;
+
+    if (
+        !Array.isArray(correcciones) || correcciones.length === 0 ||
+        !correcciones.every((c) =>
+            Number.isInteger(Number(c?.id_respuesta)) &&
+            nota_valida(c?.nota) &&
+            (c?.comentario === undefined || c?.comentario === null || typeof c?.comentario === "string")
+        )
+    ) {
+        return res.status(400).json({ mensaje: "Cada respuesta necesita una nota entre 0 y 10" });
+    }
+
+    const conexion = await pool.getConnection();
+    let transaccion_iniciada = false;
+
+    try {
+        const id_profesor = await id_profesor_de(req.usuario.id);
+        if (!id_profesor) {
+            return res.status(403).json({ mensaje: "Tu usuario no tiene un perfil de profesor" });
+        }
+
+        const [entregas] = await conexion.execute(
+            `SELECT ea.id
+            FROM evaluacion_alumno ea
+            JOIN evaluacion e ON e.id = ea.id_evaluacion
+            WHERE ea.id = ? AND e.id_profesor = ?`,
+            [id_entrega, id_profesor]
+        );
+        if (entregas.length === 0) {
+            return res.status(404).json({ mensaje: "La entrega no existe o no es de tus evaluaciones" });
+        }
+
+        const [respuestas] = await conexion.execute(
+            "SELECT id FROM respuestas WHERE id_evaluacion_alumno = ?",
+            [id_entrega]
+        );
+        const ids_validos = respuestas.map((r) => r.id);
+        const ids_enviados = correcciones.map((c) => Number(c.id_respuesta));
+        const completas =
+            ids_validos.length === ids_enviados.length &&
+            ids_validos.every((id) => ids_enviados.includes(id));
+
+        if (!completas) {
+            return res.status(400).json({ mensaje: "Tenes que corregir todas las respuestas de la entrega" });
+        }
+
+        await conexion.beginTransaction();
+        transaccion_iniciada = true;
+
+        let suma = 0;
+        for (const c of correcciones) {
+            const nota = Math.round(Number(c.nota) * 10) / 10;
+            suma += nota;
+            await conexion.execute(
+                "UPDATE respuestas SET nota = ?, correccion_ia = ? WHERE id = ? AND id_evaluacion_alumno = ?",
+                [nota, (c.comentario || "").trim(), Number(c.id_respuesta), id_entrega]
+            );
+        }
+
+        const nota_final = Math.round((suma / correcciones.length) * 100) / 100;
+        await conexion.execute(
+            "UPDATE evaluacion_alumno SET nota = ? WHERE id = ?",
+            [nota_final, id_entrega]
+        );
+
+        await conexion.commit();
+        transaccion_iniciada = false;
+
+        return res.status(200).json({ mensaje: "Correccion guardada", nota: nota_final });
+
+    } catch (error) {
+        if (transaccion_iniciada) {
+            await conexion.rollback();
+        }
+
+        console.error("Error al corregir la entrega", error);
+        return res.status(500).json({ mensaje: "Error interno al guardar la correccion" });
+
+    } finally {
+        conexion.release();
+    }
+};
 
 export {
     crear_evaluacion,
     listar_evaluacion_profesor,
     listar_evaluacion_alumno,
-    listar_resultado_alumno
+    listar_resultado_alumno,
+    obtener_evaluacion_alumno,
+    entregar_evaluacion,
+    listar_entregas_profesor,
+    obtener_entrega_profesor,
+    corregir_entrega
 }

@@ -28,27 +28,30 @@ onMounted(async () => {
     <h1 class="titulo-pagina">Evaluaciones</h1>
     <p class="subtitulo-pagina">Las evaluaciones de los grupos en los que estas.</p>
 
-    <p v-if="error" calss="alerta alerta--error" role="alerta">{{ error }}</p>
-    <p v-else-if="cargadno" class="vacio">Cargando...</p>
-    <p v-else-if="evaluaciones.length === 0">No tenes evaluaciones por ahora.</p>
+    <p v-if="error" class="alerta alerta--error" role="alert">{{ error }}</p>
+    <p v-else-if="cargando" class="vacio">Cargando...</p>
+    <p v-else-if="evaluaciones.length === 0" class="vacio">No tenes evaluaciones por ahora.</p>
 
     <ul v-else class="lista">
-        <li v-for="evaluacion in evaluaciones" :key="evaluacion.id" class="lista-item">
+        <li v-for="evaluacion in evaluaciones" :key="evaluacion.id" class="lista__item">
             <div>
-                <p class="lista-titulo">{{ evaluacion.titulo }}</p>
-                <p class="lista-detalle">{{ evaluacion.grupo }} . {{ formatear_fecha(evaluacion.fecha) }}</p> 
+                <p class="lista__titulo">{{ evaluacion.titulo }}</p>
+                <p class="lista__detalle">{{ evaluacion.grupo }} · {{ formatear_fecha(evaluacion.fecha) }}</p>
             </div>
 
             <div>
-                <span v-if="evaluacion.estado === 'corregida'" 
-                    class="lista-detalle">Nota: {{ formatear_nota(evaluacion.nota) }}&nbsp;
-                </span>
-
-                <span calss="etiqueta" :class="estado[evaluacion.estado]?.clase">
-                    {{ estados[evaluacion.estado]?.texto || evaluacion.estado }}
+                <span v-if="evaluacion.estado === 'corregida'" class="lista__detalle">Nota: {{ formatear_nota(evaluacion.nota) }}&nbsp;</span>
+                <RouterLink
+                    v-if="evaluacion.estado === 'pendiente'"
+                    :to="{ name: 'alumno-resolver-evaluacion', params: { id: evaluacion.id } }"
+                    class="boton boton--chico"
+                >
+                Resolver
+                </RouterLink>
+                <span v-else class="etiqueta" :class="estados[evaluacion.estado]?.clase">
+                {{ estados[evaluacion.estado]?.texto || evaluacion.estado }}
                 </span>
             </div>
         </li>
     </ul>
-
 </template>

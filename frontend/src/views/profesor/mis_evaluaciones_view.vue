@@ -18,6 +18,7 @@ onMounted( async () => {
 })
 </script>
 
+
 <template>
     <h1 class="titulo-pagina">Mis evaluaciones</h1>
     <p class="subtitulo-pagina">Evaluaciones que creaste y cuantas entregas recibieron.</p>
@@ -31,14 +32,24 @@ onMounted( async () => {
     <p v-else-if="evaluaciones.length === 0" class="vacio">Todavia no creaste ninguna evaluacion.</p>
 
     <ul v-else class="lista">
-        <li v-for="evaluacion in evaluaciones" :key="evaluacion.id" class="lista-item">
+        <li v-for="evaluacion in evaluaciones" :key="evaluacion.id" class="lista__item">
             <div>
-                <p class="lista-titulo">{{ evaluacion.titulo }}</p>
-
-                <p class="lista-detalle">{{ evaluacion.grupo || 'Sin grupo' }} · {{ formatear_fecha(evaluacion.fecha) }} · {{ evaluacion.preguntas }} preguntas</p>
+                <p class="lista__titulo">{{ evaluacion.titulo }}</p>
+                <p class="lista__detalle">
+                {{ evaluacion.grupo || 'Sin grupo' }} · {{ formatear_fecha(evaluacion.fecha) }} · {{ evaluacion.preguntas }} preguntas
+                </p>
             </div>
 
-            <span class="etiqueta">{{ evaluacion.entregas }} entregas</span>
+            <div>
+                <span class="etiqueta">{{ evaluacion.entregas }} entregas</span>
+                <RouterLink
+                    v-if="evaluacion.entregas > 0"
+                    class="boton boton--chico"
+                    :to="{ name: 'entregas-profesor', params: { id: evaluacion.id } }"
+                >
+                Ver entregas
+                </RouterLink>
+            </div>
         </li>
-  </ul>
+    </ul>
 </template>

@@ -13,7 +13,7 @@ onMounted(async () => {
     } catch {
         error.value = 'No se pudieron cargar tus resultados'
     } finally {
-        cargando.value = dalse
+        cargando.value = false
     }
 })
 </script>
@@ -42,7 +42,7 @@ onMounted(async () => {
 
                 <p><span class="lista-detalle">Tu respuesta:</span> {{ item.respuesta }}</p>
 
-                <p><span class="lista-detalle">Corrección IA:</span> {{ item.correccion_ia }}</p>
+                <p><span class="lista-detalle">Correccion IA:</span> {{ item.correccion_ia }}</p>
 
                 <p class="lista-detalle">Nota de la pregunta: {{ formatear_nota(item.nota) }}</p>
             </div>

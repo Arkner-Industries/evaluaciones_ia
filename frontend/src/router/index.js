@@ -55,7 +55,8 @@ const router = createRouter({
 				{ path: 'grupos', name: 'grupos-profesor', component: () => import('@/views/profesor/mis_grupos_view.vue') },
 				{ path: 'grupos/nuevo', name: 'profesor-crear-grupo', component: () => import('@/views/profesor/crear_grupo_view.vue') },
 				{ path: 'evaluaciones', name: 'evaluaciones-profesor', component: () => import('@/views/profesor/mis_evaluaciones_view.vue') },
-				{ path: 'evaluaciones/nueva', name: 'profesor-crear-evaluacion', component: () => import('@/views/profesor/crear_evaluacion_view.vue') }
+				{ path: 'evaluaciones/nueva', name: 'profesor-crear-evaluacion', component: () => import('@/views/profesor/crear_evaluacion_view.vue') },
+				{ path: 'evaluacion/:id/entregas', name: 'profesor-entregas', component: () => import('@/views/profesor/') }
 			]
 		},
 
